@@ -6,7 +6,7 @@ export function useTelegramApprovals() {
     queryKey: ['telegramApprovals'],
     queryFn: async () => {
       try {
-        const data = await telegramService.getPendingApprovals();
+        const data = await telegramService.getApprovals()
         return data?.data || [];
       } catch (error) {
         console.error('[useTelegramApprovals] Failed:', error);
