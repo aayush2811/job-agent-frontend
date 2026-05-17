@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useApplications } from '@/hooks/queries/useApplications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,11 +16,7 @@ const mockTimelineSteps = [
 ];
 
 export default function ApplicationsPage() {
-  const { data: apps, isLoading, error } = useApplications();
-  
-  useEffect(() => {
-    console.log('[ApplicationsPage] Mounted. Loading:', isLoading);
-  }, [isLoading]);
+  const { data: apps, isLoading } = useApplications();
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-12">

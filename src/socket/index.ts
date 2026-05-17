@@ -1,16 +1,11 @@
 import { io, Socket } from 'socket.io-client';
 import type { SocketDebugState } from './types';
+import { logger } from '@/lib/logger';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
-const DEBUG = process.env.NEXT_PUBLIC_SOCKET_DEBUG !== 'false';
+const DEBUG = process.env.NEXT_PUBLIC_SOCKET_DEBUG === 'true';
 
 type DebugListener = (state: Partial<SocketDebugState>) => void;
-
-function log(...args: unknown[]) {
-  if (DEBUG) {
-    console.log('[Socket Client]', ...args);
-  }
-}
 
 class SocketService {
   private socket: Socket | null = null;
@@ -27,17 +22,13 @@ class SocketService {
 
   connect(): Socket {
     if (this.socket?.connected) {
-      log('reuse existing connected socket', this.socket.id);
       return this.socket;
     }
 
     if (this.socket) {
-      log('reconnecting existing socket instance');
       this.socket.connect();
       return this.socket;
     }
-
-    log('creating socket', SOCKET_URL);
 
     this.notify({ status: 'connecting', url: SOCKET_URL });
 
@@ -53,25 +44,25 @@ class SocketService {
     });
 
     this.bindCoreEvents(this.socket);
-    this.bindDiagnosticEvents(this.socket);
+    if (DEBUG) this.bindDiagnosticEvents(this.socket);
 
     return this.socket;
   }
 
   private bindCoreEvents(socket: Socket) {
     socket.on('connect', () => {
-      log('connected', socket.id, 'transport=', socket.io.engine.transport.name);
+      logger.info('Socket', `connected id=${socket.id}`);
       this.notify({
         status: 'connected',
         socketId: socket.id ?? null,
-        transport: socket.io.engine.transport.name,
+        transport: socket.io.engine?.transport?.name ?? null,
         lastError: null,
         lastEvent: 'connect',
       });
     });
 
     socket.on('disconnect', (reason) => {
-      log('disconnected', reason);
+      logger.info('Socket', `disconnected reason=${reason}`);
       this.notify({
         status: 'disconnected',
         socketId: null,
@@ -80,7 +71,7 @@ class SocketService {
     });
 
     socket.on('connect_error', (err) => {
-      log('connect_error', err.message);
+      logger.error('Socket', 'connect_error', err.message);
       this.notify({
         status: 'disconnected',
         lastError: err.message,
@@ -91,7 +82,7 @@ class SocketService {
 
   private bindDiagnosticEvents(socket: Socket) {
     socket.io.on('reconnect_attempt', (attempt) => {
-      log('reconnect_attempt', attempt);
+      logger.debug('Socket', `reconnect_attempt ${attempt}`);
       this.notify({
         status: 'reconnecting',
         reconnectAttempts: attempt,
@@ -100,7 +91,7 @@ class SocketService {
     });
 
     socket.io.on('reconnect', (attempt) => {
-      log('reconnected after', attempt);
+      logger.debug('Socket', `reconnected after ${attempt}`);
       this.notify({
         status: 'connected',
         reconnectAttempts: attempt,
@@ -109,49 +100,12 @@ class SocketService {
     });
 
     socket.io.on('reconnect_failed', () => {
-      log('reconnect_failed');
+      logger.error('Socket', 'reconnect_failed');
       this.notify({
         status: 'disconnected',
         lastError: 'reconnect_failed',
         lastEvent: 'reconnect_failed',
       });
-    });
-
-    socket.io.engine.on('upgrade', (transport) => {
-      log('transport upgraded', transport.name);
-      this.notify({
-        transport: transport.name,
-        lastEvent: `upgrade:${transport.name}`,
-      });
-    });
-
-    socket.on('server-heartbeat', (payload: { timestamp?: number; status?: string }) => {
-      log('server-heartbeat', payload);
-      this.notify({
-        lastHeartbeatAt: payload?.timestamp ?? Date.now(),
-        lastEvent: 'server-heartbeat',
-      });
-    });
-
-    socket.on('server:hello', (payload: unknown) => {
-      log('server:hello', payload);
-      this.notify({ lastEvent: 'server:hello' });
-    });
-
-    socket.on('whatsapp-status', (payload: unknown) => {
-      log('whatsapp-status', payload);
-      this.notify({ lastEvent: 'whatsapp-status' });
-    });
-
-    socket.on('qr-updated', (payload: unknown) => {
-      log('qr-updated', payload);
-      this.notify({ lastEvent: 'qr-updated' });
-    });
-
-    socket.onAny((event, ...args) => {
-      if (['server-heartbeat', 'connect', 'disconnect'].includes(event)) return;
-      log('event', event, args[0]);
-      this.notify({ lastEvent: event });
     });
   }
 
@@ -165,7 +119,6 @@ class SocketService {
 
   disconnect() {
     if (this.socket) {
-      log('disconnect called');
       this.socket.disconnect();
       this.socket = null;
       this.notify({

@@ -38,12 +38,6 @@ const columns = [
 export default function JobsPage() {
   const { data: jobs, isLoading, error } = useJobs();
   
-  useEffect(() => {
-    console.log('[JobsPage] Mounted. Loading:', isLoading);
-    if (jobs) console.log('[JobsPage] Jobs data length:', jobs.length);
-    if (error) console.error('[JobsPage] Error loading jobs:', error);
-  }, [jobs, isLoading, error]);
-
   const table = useReactTable({
     data: jobs || [],
     columns,

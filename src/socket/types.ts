@@ -25,3 +25,34 @@ export const initialSocketDebugState: SocketDebugState = {
   lastEvent: null,
   url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
 };
+
+// Frontend event listeners map (Events we listen to)
+export interface ClientToServerEvents {
+  // Empty for now as we mostly listen to server events
+}
+
+export interface ServerToClientEvents {
+  // Resumes
+  'resume-uploaded': () => void;
+  'resume-updated': () => void;
+  'resume-deleted': () => void;
+  
+  // Jobs
+  'job-added': () => void;
+  'job-updated': () => void;
+  'job-deleted': () => void;
+  
+  // Applications
+  'application-added': () => void;
+  'application-updated': () => void;
+  
+  // Telegram
+  'telegram-approval-requested': () => void;
+  'telegram-approval-updated': () => void;
+  
+  // WhatsApp
+  'whatsapp-message-received': () => void;
+  'whatsapp-message-sent': () => void;
+  'whatsapp-status-changed': () => void;
+}
+

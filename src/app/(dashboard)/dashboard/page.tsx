@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useJobStats } from '@/hooks/queries/useJobs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,13 +10,7 @@ import { LiveLogViewer } from '@/components/dashboard/LiveLogViewer';
 import { SocketDebugPanel } from '@/components/socket/SocketDebugPanel';
 
 export default function DashboardPage() {
-  const { data: stats, isLoading, error } = useJobStats();
-
-  useEffect(() => {
-    console.log('[DashboardPage] Mounted. Loading:', isLoading);
-    if (stats) console.log('[DashboardPage] Stats:', stats);
-    if (error) console.error('[DashboardPage] Error:', error);
-  }, [stats, isLoading, error]);
+  const { data: stats, isLoading } = useJobStats();
 
   return (
     <div className="space-y-6 pb-12">

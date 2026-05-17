@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { LayoutDashboard, Briefcase, FileText, MessageCircle, Send, BarChart, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileText, MessageCircle, Send, BarChart, Settings, LogOut, ScrollText } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Jobs', href: '/jobs', icon: Briefcase },
+  { name: 'Resumes', href: '/resumes', icon: ScrollText },
   { name: 'Applications', href: '/applications', icon: FileText },
   { name: 'WhatsApp', href: '/whatsapp', icon: MessageCircle },
   { name: 'Telegram', href: '/telegram', icon: Send },

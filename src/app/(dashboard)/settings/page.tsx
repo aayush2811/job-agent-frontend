@@ -1,15 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export default function SettingsPage() {
-  useEffect(() => {
-    console.log('[SettingsPage] Mounted.');
-  }, []);
-
   return (
     <div className="space-y-6">
       <div>

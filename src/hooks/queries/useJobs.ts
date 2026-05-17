@@ -1,20 +1,42 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { jobsService } from '@/services/jobs.service';
+import { useEffect } from 'react';
+import { useSocket } from '@/hooks/useSocket';
+import { logger } from '@/lib/logger';
 
 export function useJobs() {
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleJobUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['jobStats'] });
+    };
+
+    socket.on('job-added', handleJobUpdate);
+    socket.on('job-updated', handleJobUpdate);
+    socket.on('job-deleted', handleJobUpdate);
+
+    return () => {
+      socket.off('job-added', handleJobUpdate);
+      socket.off('job-updated', handleJobUpdate);
+      socket.off('job-deleted', handleJobUpdate);
+    };
+  }, [socket, queryClient]);
+
   return useQuery({
     queryKey: ['jobs'],
     queryFn: async () => {
       try {
         const data = await jobsService.getJobs();
-        return data?.data || [];
+        const raw = data?.data || data || {};
+        return raw.jobs || [];
       } catch (error) {
-        console.error('[useJobs] Failed to fetch jobs:', error);
-        // Fallback mock data if API is down
-        return [
-          { id: '1', company: 'Google', role: 'Frontend Engineer', status: 'pending', score: 95, date: new Date().toISOString() },
-          { id: '2', company: 'Meta', role: 'React Developer', status: 'approved', score: 88, date: new Date().toISOString() },
-        ];
+        logger.error('Jobs', 'fetch failed', error);
+        return [];
       }
     },
     staleTime: 30000,
@@ -28,10 +50,16 @@ export function useJobStats() {
     queryFn: async () => {
       try {
         const data = await jobsService.getJobStats();
-        return data?.data || { total: 0, pending: 0, approved: 0, rejected: 0 };
+        const raw = data?.data || data || {};
+        return {
+          total: raw.totalJobs ?? raw.total ?? 0,
+          pending: raw.pending ?? 0,
+          approved: raw.approved ?? raw.autoApplied ?? 0,
+          rejected: raw.rejected ?? 0,
+        };
       } catch (error) {
-        console.error('[useJobStats] Failed to fetch job stats:', error);
-        return { total: 156, pending: 42, approved: 89, rejected: 25 };
+        logger.error('Jobs', 'stats fetch failed', error);
+        return { total: 0, pending: 0, approved: 0, rejected: 0 };
       }
     },
     staleTime: 30000,

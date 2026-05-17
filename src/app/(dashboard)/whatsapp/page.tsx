@@ -10,12 +10,6 @@ import { QrCode, Smartphone } from 'lucide-react';
 export default function WhatsAppPage() {
   const { data: status, isLoading, error } = useWhatsAppStatus();
   
-  useEffect(() => {
-    console.log('[WhatsAppPage] Mounted. Loading:', isLoading);
-    if (status) console.log('[WhatsAppPage] Status:', status);
-    if (error) console.error('[WhatsAppPage] Error:', error);
-  }, [status, isLoading, error]);
-
   return (
     <div className="space-y-6">
       <div>

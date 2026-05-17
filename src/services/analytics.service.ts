@@ -1,16 +1,25 @@
 import { apiClient } from '@/lib/axios';
+import { EMPTY_DASHBOARD, unwrapData } from '@/lib/api';
+
+export type DashboardStats = typeof EMPTY_DASHBOARD;
 
 export const analyticsService = {
-  getDashboardStats: async () => {
+  getDashboardStats: async (): Promise<DashboardStats> => {
     const { data } = await apiClient.get('/analytics/dashboard');
-    return data;
+    return unwrapData<DashboardStats>(data, EMPTY_DASHBOARD);
   },
+
   getApplicationStats: async () => {
     const { data } = await apiClient.get('/analytics/applications');
-    return data;
+    return unwrapData(data, {
+      summary: { total: 0, successRate: 0 },
+      dailyActivity: [],
+      recentApplications: [],
+    });
   },
+
   getPlatformPerformance: async () => {
     const { data } = await apiClient.get('/analytics/platforms');
-    return data;
+    return unwrapData(data, { platforms: [] });
   },
 };
