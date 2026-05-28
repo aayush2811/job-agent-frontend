@@ -1,12 +1,20 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { AuthUser } from '@/types/auth';
+import { clearTokenStorage, syncTokenStorage } from '@/lib/auth-tokens';
 
 interface AuthState {
-  user: unknown | null;
+  user: AuthUser | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
-  login: (user: unknown, token: string) => void;
+  /** Zustand persist finished rehydrating from localStorage */
+  hasHydrated: boolean;
+  isDemoMode: boolean;
+  setSession: (user: AuthUser, accessToken: string, refreshToken: string) => void;
+  updateUser: (user: AuthUser) => void;
   logout: () => void;
+  setHasHydrated: (value: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -14,20 +22,56 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
-      login: (user, token) => {
-        // We also need to set the cookie for SSR and middleware
-        document.cookie = `auth_token=${token}; path=/; max-age=86400; SameSite=Lax`;
-        set({ user, token, isAuthenticated: true });
+      hasHydrated: false,
+      isDemoMode: false,
+      setHasHydrated: (value) => set({ hasHydrated: value }),
+      setSession: (user, accessToken, refreshToken) => {
+        syncTokenStorage(accessToken, refreshToken);
+        set({
+          user,
+          token: accessToken,
+          refreshToken,
+          isAuthenticated: true,
+        });
       },
+      updateUser: (user) => set({ user }),
       logout: () => {
-        document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-        set({ user: null, token: null, isAuthenticated: false });
+        clearTokenStorage();
+        set({
+          user: null,
+          token: null,
+          refreshToken: null,
+          isAuthenticated: false,
+          isDemoMode: false,
+        });
       },
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        refreshToken: state.refreshToken,
+        isAuthenticated: state.isAuthenticated,
+        isDemoMode: state.isDemoMode,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.token && state.refreshToken) {
+          syncTokenStorage(state.token, state.refreshToken);
+          if (!state.isAuthenticated) {
+            state.isAuthenticated = true;
+          }
+        }
+        useAuthStore.setState({ hasHydrated: true });
+      },
     }
   )
 );
+
+/** Auth state is known and access token is available for API/socket */
+export function selectAuthReady(state: AuthState): boolean {
+  return state.hasHydrated && Boolean(state.token);
+}

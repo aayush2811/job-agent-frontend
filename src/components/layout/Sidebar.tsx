@@ -5,10 +5,13 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { LayoutDashboard, Briefcase, FileText, MessageCircle, Send, BarChart, Settings, LogOut, ScrollText } from 'lucide-react';
+import { authService } from '@/services/auth.service';
+import { socketService } from '@/socket';
+import { LayoutDashboard, Briefcase, FileText, MessageCircle, Send, BarChart, Settings, LogOut, ScrollText, Activity } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'System', href: '/system', icon: Activity },
   { name: 'Jobs', href: '/jobs', icon: Briefcase },
   { name: 'Resumes', href: '/resumes', icon: ScrollText },
   { name: 'Applications', href: '/applications', icon: FileText },
@@ -22,6 +25,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen } = useAppStore();
   const logout = useAuthStore((state) => state.logout);
+  const refreshToken = useAuthStore((state) => state.refreshToken);
 
   return (
     <>
@@ -75,7 +79,13 @@ export function Sidebar() {
         <div className="p-4 border-t">
           <button
             className="group flex w-full items-center px-3 py-2.5 text-sm font-medium rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-            onClick={() => {
+            onClick={async () => {
+              try {
+                await authService.logout(refreshToken);
+              } catch {
+                /* ignore */
+              }
+              socketService.disconnect();
               logout();
               window.location.href = '/login';
             }}

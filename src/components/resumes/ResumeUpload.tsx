@@ -2,101 +2,131 @@
 
 import { useState, useCallback } from 'react';
 import { useDropzone, FileRejection } from 'react-dropzone';
+import { motion } from 'framer-motion';
 import { useUploadResume } from '@/hooks/queries/useResumes';
-import { UploadCloud, FileType, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { UploadCloud, XCircle, Loader2, Sparkles, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/lib/api';
 
-export function ResumeUpload() {
+export function ResumeUpload({ onSuccess }: { onSuccess?: () => void }) {
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<'idle' | 'upload' | 'parse'>('idle');
   const { mutate: uploadResume, isPending } = useUploadResume();
 
-  const onDrop = useCallback((acceptedFiles: File[], fileRejections: FileRejection[]) => {
-    setUploadError(null);
+  const onDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+      setUploadError(null);
 
-    if (fileRejections.length > 0) {
-      const error = fileRejections[0].errors[0];
-      if (error.code === 'file-invalid-type') {
-        setUploadError('Please upload a PDF or DOCX file.');
-      } else if (error.code === 'file-too-large') {
-        setUploadError('File size must be less than 5MB.');
-      } else {
-        setUploadError(error.message);
-      }
-      return;
-    }
-
-    const file = acceptedFiles[0];
-    if (file) {
-      uploadResume(file, {
-        onError: () => {
-          setUploadError('Upload failed. Please try again.');
-          toast.error('Failed to upload resume');
-        },
-        onSuccess: () => {
-          toast.success('Resume uploaded successfully');
+      if (fileRejections.length > 0) {
+        const error = fileRejections[0].errors[0];
+        if (error.code === 'file-invalid-type') {
+          setUploadError('Please upload a PDF or DOCX file.');
+        } else if (error.code === 'file-too-large') {
+          setUploadError('File size must be less than 5MB.');
+        } else {
+          setUploadError(error.message);
         }
-      });
-    }
-  }, [uploadResume]);
+        return;
+      }
+
+      const file = acceptedFiles[0];
+      if (file) {
+        setPhase('upload');
+        uploadResume(file, {
+          onError: (err) => {
+            setPhase('idle');
+            const errMsg = getApiErrorMessage(err, 'Upload failed. Please try again.');
+            setUploadError(errMsg);
+            toast.error(errMsg);
+          },
+          onSuccess: () => {
+            setPhase('parse');
+            setTimeout(() => setPhase('idle'), 1200);
+            toast.success('Resume parsed — AI skills extracted');
+            onSuccess?.();
+          },
+        });
+      }
+    },
+    [uploadResume, onSuccess]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     },
-    maxSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 5 * 1024 * 1024,
     multiple: false,
-    disabled: isPending
+    disabled: isPending,
   });
 
+  const busy = isPending || phase !== 'idle';
+
   return (
-    <div className="bg-card rounded-xl border p-6 shadow-sm">
-      <h3 className="text-lg font-semibold mb-4">Upload Resume</h3>
-      
-      <div 
+    <div className="glass-card rounded-2xl border-none p-6 shadow-lg glow-border">
+      <div className="flex items-center gap-2 mb-4">
+        <Sparkles className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold">Premium Resume Upload</h3>
+      </div>
+
+      <div
         {...getRootProps()}
         className={cn(
-          "relative group border-2 border-dashed rounded-xl p-8 transition-all duration-200 text-center cursor-pointer overflow-hidden",
-          isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
-          isPending && "pointer-events-none opacity-80"
+          'relative group border-2 border-dashed rounded-2xl p-10 transition-all duration-300 text-center cursor-pointer overflow-hidden',
+          isDragActive && 'border-primary bg-primary/10 scale-[1.01]',
+          !isDragActive && 'border-primary/30 hover:border-primary/60 hover:bg-primary/5',
+          busy && 'pointer-events-none'
         )}
       >
         <input {...getInputProps()} />
-        
-        <div className="flex flex-col items-center justify-center space-y-4">
-          {isPending ? (
+        {isDragActive && (
+          <motion.div
+            layoutId="upload-glow"
+            className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent"
+          />
+        )}
+
+        <div className="relative flex flex-col items-center justify-center space-y-4">
+          {busy ? (
             <>
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              <div className="w-14 h-14 bg-primary/15 rounded-2xl flex items-center justify-center glow-ring">
+                <Loader2 className="w-7 h-7 text-primary animate-spin" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Uploading Document...</p>
-                <p className="text-xs text-muted-foreground">Sending to backend API</p>
+                <p className="text-sm font-medium">
+                  {phase === 'parse' ? 'Extracting skills with AI…' : 'Uploading securely…'}
+                </p>
+                <p className="text-xs text-muted-foreground">PDF/DOCX → structured profile</p>
               </div>
-              
-              {/* Fake progress bar */}
-              <div className="w-full max-w-[200px] h-1.5 bg-muted rounded-full overflow-hidden mt-4">
-                <div className="h-full bg-primary w-1/2 animate-[progress_2s_ease-in-out_infinite]" />
+              <div className="w-full max-w-[220px] h-2 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-primary via-indigo-500 to-primary"
+                  initial={{ width: '8%' }}
+                  animate={{ width: phase === 'parse' ? '100%' : '65%' }}
+                  transition={{ duration: phase === 'parse' ? 1 : 2, ease: 'easeInOut' }}
+                />
               </div>
             </>
           ) : (
             <>
-              <div className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
-                isDragActive ? "bg-primary text-primary-foreground scale-110" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
-              )}>
-                <UploadCloud className="w-6 h-6" />
+              <div
+                className={cn(
+                  'w-14 h-14 rounded-2xl flex items-center justify-center transition-all',
+                  isDragActive
+                    ? 'bg-primary text-primary-foreground scale-110'
+                    : 'bg-muted/80 text-muted-foreground group-hover:bg-primary/15 group-hover:text-primary'
+                )}
+              >
+                <UploadCloud className="w-7 h-7" />
               </div>
-              
               <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">
-                  <span className="text-primary">Click to upload</span> or drag and drop
+                <p className="text-sm font-medium">
+                  <span className="text-primary">Drop resume</span> or click to browse
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  PDF or DOCX (max. 5MB)
-                </p>
+                <p className="text-xs text-muted-foreground">PDF · DOCX · max 5MB</p>
               </div>
             </>
           )}
@@ -104,18 +134,16 @@ export function ResumeUpload() {
       </div>
 
       {uploadError && (
-        <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-2 text-destructive text-sm animate-in fade-in slide-in-from-top-1">
+        <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-2 text-destructive text-sm">
           <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <p>{uploadError}</p>
         </div>
       )}
 
-      {!isPending && !uploadError && (
-        <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground justify-center">
-          <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-          <span>Secure and private. Only you can view this.</span>
-        </div>
-      )}
+      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Shield className="w-3.5 h-3.5 text-emerald-500" />
+        Owner-only access · encrypted in transit
+      </div>
     </div>
   );
 }

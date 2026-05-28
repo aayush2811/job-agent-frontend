@@ -59,41 +59,23 @@ export function ResumePreviewModal({ resume, onClose }: ResumePreviewModalProps)
         {/* Content Body - Split Layout */}
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           
-          {/* Left Pane - Document Preview (Simulated) */}
-          <div className="w-full md:w-1/2 border-r bg-muted/10 p-6 overflow-y-auto">
-            <div className="aspect-[1/1.414] bg-background border shadow-sm rounded-lg p-8 mx-auto max-w-md relative">
-              {/* Simulated Document Content */}
-              <div className="space-y-4 opacity-50 pointer-events-none select-none">
-                <div className="h-6 w-3/4 bg-foreground/20 rounded mx-auto" />
-                <div className="h-4 w-1/2 bg-foreground/10 rounded mx-auto mb-8" />
-                
-                <div className="h-4 w-1/4 bg-primary/20 rounded" />
-                <div className="space-y-2">
-                  <div className="h-3 w-full bg-foreground/10 rounded" />
-                  <div className="h-3 w-5/6 bg-foreground/10 rounded" />
-                  <div className="h-3 w-full bg-foreground/10 rounded" />
-                </div>
-                
-                <div className="h-4 w-1/4 bg-primary/20 rounded mt-8" />
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                     <div className="h-3 w-1/3 bg-foreground/20 rounded" />
-                     <div className="h-3 w-1/4 bg-foreground/10 rounded" />
-                  </div>
-                  <div className="h-3 w-full bg-foreground/10 rounded mt-2" />
-                  <div className="h-3 w-4/5 bg-foreground/10 rounded" />
-                </div>
+          {/* Left Pane - Real PDF Viewer */}
+          <div className="w-full md:w-1/2 border-r bg-muted/10 p-4 flex flex-col h-full">
+            {resume.fileUrl ? (
+              <iframe 
+                src={`${resume.fileUrl}#toolbar=0&navpanes=0`} 
+                className="w-full flex-1 rounded-xl border bg-white shadow-inner min-h-[450px]" 
+                title="Resume Preview"
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center bg-background border shadow-sm rounded-xl p-8 max-w-md mx-auto">
+                <Search className="w-8 h-8 text-muted-foreground mb-2" />
+                <p className="text-sm font-medium">No preview available</p>
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                  This document has no valid file path.
+                </p>
               </div>
-              
-              {/* Overlay Notice */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-[2px]">
-                 <Search className="w-8 h-8 text-muted-foreground mb-2" />
-                 <p className="text-sm font-medium">Document Preview</p>
-                 <p className="text-xs text-muted-foreground mt-1 text-center max-w-[200px]">
-                   A real PDF renderer would be integrated here.
-                 </p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Right Pane - AI Insights */}

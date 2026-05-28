@@ -2,11 +2,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { applicationsService } from '@/services/applications.service';
 import { useEffect } from 'react';
 import { useSocket } from '@/hooks/useSocket';
+import { useAuthQueryEnabled } from '@/hooks/useAuthQueryEnabled';
 import { logger } from '@/lib/logger';
 
 export function useApplications() {
   const queryClient = useQueryClient();
   const { socket } = useSocket();
+  const enabled = useAuthQueryEnabled();
 
   useEffect(() => {
     if (!socket) return;
@@ -35,6 +37,7 @@ export function useApplications() {
         return [];
       }
     },
+    enabled,
     staleTime: 30000,
     retry: 1,
   });

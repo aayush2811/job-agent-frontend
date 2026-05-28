@@ -1,112 +1,94 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, MessageCircle, Briefcase, FileText, AlertCircle, XCircle } from 'lucide-react';
+import {
+  CheckCircle2,
+  MessageCircle,
+  Briefcase,
+  AlertCircle,
+  XCircle,
+  Brain,
+  FileText,
+  Radio,
+} from 'lucide-react';
+import { useActivityFeed } from '@/hooks/useActivityFeed';
+import type { ActivityKind } from '@/types/activity';
+import type { ReactNode } from 'react';
+import { formatDistanceToNow } from '@/lib/format-time';
 
-type ActivityType = 'job_found' | 'auto_applied' | 'whatsapp_sent' | 'approval_pending' | 'failed';
-
-interface Activity {
-  id: string;
-  type: ActivityType;
-  message: string;
-  timestamp: Date;
-}
-
-const getIcon = (type: ActivityType) => {
-  switch (type) {
-    case 'job_found': return <Briefcase className="w-4 h-4 text-blue-500" />;
-    case 'auto_applied': return <CheckCircle2 className="w-4 h-4 text-green-500" />;
-    case 'whatsapp_sent': return <MessageCircle className="w-4 h-4 text-green-400" />;
-    case 'approval_pending': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
-    case 'failed': return <XCircle className="w-4 h-4 text-red-500" />;
-  }
+const iconMap: Record<ActivityKind, ReactNode> = {
+  job_found: <Briefcase className="w-4 h-4 text-blue-500" />,
+  job_scored: <Brain className="w-4 h-4 text-violet-500" />,
+  match: <Brain className="w-4 h-4 text-indigo-500" />,
+  approval: <AlertCircle className="w-4 h-4 text-amber-500" />,
+  applied: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+  failed: <XCircle className="w-4 h-4 text-red-500" />,
+  whatsapp: <MessageCircle className="w-4 h-4 text-green-400" />,
+  resume: <FileText className="w-4 h-4 text-cyan-500" />,
+  telegram: <Radio className="w-4 h-4 text-sky-500" />,
+  system: <Radio className="w-4 h-4 text-muted-foreground" />,
 };
 
-const getBgColor = (type: ActivityType) => {
-  switch (type) {
-    case 'job_found': return 'bg-blue-500/10 border-blue-500/20';
-    case 'auto_applied': return 'bg-green-500/10 border-green-500/20';
-    case 'whatsapp_sent': return 'bg-green-400/10 border-green-400/20';
-    case 'approval_pending': return 'bg-yellow-500/10 border-yellow-500/20';
-    case 'failed': return 'bg-red-500/10 border-red-500/20';
-  }
+const bgMap: Record<ActivityKind, string> = {
+  job_found: 'bg-blue-500/10 border-blue-500/20',
+  job_scored: 'bg-violet-500/10 border-violet-500/20',
+  match: 'bg-indigo-500/10 border-indigo-500/20',
+  approval: 'bg-amber-500/10 border-amber-500/20',
+  applied: 'bg-emerald-500/10 border-emerald-500/20',
+  failed: 'bg-red-500/10 border-red-500/20',
+  whatsapp: 'bg-green-400/10 border-green-400/20',
+  resume: 'bg-cyan-500/10 border-cyan-500/20',
+  telegram: 'bg-sky-500/10 border-sky-500/20',
+  system: 'bg-muted/50 border-border',
 };
 
 export function LiveActivityFeed() {
-  const [activities, setActivities] = useState<Activity[]>([]);
-
-  // Simulation Loop
-  useEffect(() => {
-    let idCounter = 0;
-    const types: ActivityType[] = ['job_found', 'auto_applied', 'whatsapp_sent', 'approval_pending', 'failed'];
-    const messages = [
-      'Found new matching role at Google',
-      'Successfully submitted application to Meta',
-      'Sent outreach message to recruiter',
-      'Waiting for Telegram approval for Stripe',
-      'Application failed: Captcha required'
-    ];
-
-    const interval = setInterval(() => {
-      const idx = Math.floor(Math.random() * types.length);
-      const newActivity: Activity = {
-        id: `act-${idCounter++}`,
-        type: types[idx],
-        message: messages[idx],
-        timestamp: new Date(),
-      };
-
-      setActivities((prev) => [newActivity, ...prev].slice(0, 10)); // Keep only last 10
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const { activities, pulseAt } = useActivityFeed(12);
 
   return (
-    <Card className="glass-card border-none h-full flex flex-col shadow-lg overflow-hidden relative">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 animate-pulse" />
-      <CardHeader className="pb-2 flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Live Activity</CardTitle>
-        <span className="flex items-center text-xs font-medium text-green-500 bg-green-500/10 px-2 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-ping" />
-          Live
-        </span>
+    <Card className="glass-card border-none shadow-lg h-full flex flex-col glow-border overflow-hidden">
+      <CardHeader className="pb-2 shrink-0">
+        <CardTitle className="text-lg flex items-center justify-between">
+          <span>Live Activity</span>
+          <motion.span
+            key={pulseAt}
+            initial={{ opacity: 0.4 }}
+            animate={{ opacity: 1 }}
+            className="text-xs font-normal text-primary"
+          >
+            streaming
+          </motion.span>
+        </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden relative">
-        <div className="space-y-3">
-          <AnimatePresence initial={false}>
-            {activities.length === 0 && (
+      <CardContent className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1">
+        <AnimatePresence mode="popLayout" initial={false}>
+          {activities.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Waiting for automation events…
+            </p>
+          ) : (
+            activities.map((act) => (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center text-sm text-muted-foreground mt-8"
+                key={act.id}
+                layout
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, height: 0 }}
+                className={`flex gap-3 p-3 rounded-lg border ${bgMap[act.kind]}`}
               >
-                Waiting for agent activity...
-              </motion.div>
-            )}
-            {activities.map((activity) => (
-              <motion.div
-                key={activity.id}
-                initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.4, type: "spring", bounce: 0.4 }}
-                className={`flex items-start gap-3 p-3 rounded-lg border ${getBgColor(activity.type)} backdrop-blur-sm shadow-sm`}
-              >
-                <div className="mt-0.5">{getIcon(activity.type)}</div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium leading-none">{activity.message}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {activity.timestamp.toLocaleTimeString()}
+                <div className="mt-0.5 shrink-0">{iconMap[act.kind]}</div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{act.title}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{act.message}</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-1">
+                    {formatDistanceToNow(act.timestamp)}
                   </p>
                 </div>
               </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+            ))
+          )}
+        </AnimatePresence>
       </CardContent>
     </Card>
   );

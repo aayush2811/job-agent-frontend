@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, BrainCircuit, CheckSquare, Send, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePipelineStats } from '@/hooks/queries/useAnalytics';
+import { useSocket } from '@/hooks/useSocket';
 
 const nodes = [
   { id: 'found', label: 'Found', icon: Search, color: 'text-blue-500', bg: 'bg-blue-500' },
@@ -14,29 +16,64 @@ const nodes = [
 ];
 
 export function JobPipelineVisualization() {
+  const { data: pipelineData, refetch } = usePipelineStats();
+  const { socket } = useSocket();
   const [activeNode, setActiveNode] = useState(0);
-  const [counters, setCounters] = useState([1205, 843, 12, 5, 826]);
 
-  // Simulation
+  // Invalidate stats and shift active visual node on live events
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveNode((prev) => (prev + 1) % nodes.length);
-      
-      // Randomly bump counters to simulate flow
-      setCounters(prev => {
-        const next = [...prev];
-        const bumpIdx = Math.floor(Math.random() * next.length);
-        next[bumpIdx] += 1;
-        return next;
-      });
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
+    if (!socket) return;
+
+    const handleUpdate = (nodeIndex: number) => {
+      setActiveNode(nodeIndex);
+      refetch();
+    };
+
+    socket.on('job-created', () => handleUpdate(0));
+    socket.on('job-scored', () => handleUpdate(1));
+    socket.on('approval-pending', () => handleUpdate(2));
+    socket.on('application-start', () => handleUpdate(3));
+    socket.on('job-applied', () => handleUpdate(4));
+    socket.on('dashboard-update', () => refetch());
+    socket.on('job-matched', () => refetch());
+    socket.on('match-updated', () => refetch());
+
+    return () => {
+      socket.off('job-created');
+      socket.off('job-scored');
+      socket.off('approval-pending');
+      socket.off('application-start');
+      socket.off('job-applied');
+      socket.off('dashboard-update');
+      socket.off('job-matched');
+      socket.off('match-updated');
+    };
+  }, [socket, refetch]);
+
+  const p = pipelineData || {
+    found: 0,
+    scored: 0,
+    approvalPending: 0,
+    applying: 0,
+    applied: 0,
+  };
+  const counters = [
+    p.found ?? 0,
+    p.scored ?? 0,
+    p.approvalPending ?? 0,
+    p.applying ?? 0,
+    p.applied ?? 0,
+  ];
 
   return (
-    <Card className="glass-card border-none shadow-lg overflow-hidden relative">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Realtime Pipeline</CardTitle>
+    <Card className="glass-card border-none shadow-lg overflow-hidden relative glow-border">
+      <div className="absolute inset-0 terminal-grid opacity-30 pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-px ai-scan-line opacity-50" />
+      <CardHeader className="pb-2 relative">
+        <CardTitle className="text-lg flex items-center gap-2">
+          Realtime Pipeline
+          <span className="text-xs font-normal text-primary animate-pulse">LIVE</span>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="relative flex justify-between items-center px-4 py-8">

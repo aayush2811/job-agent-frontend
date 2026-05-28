@@ -7,6 +7,7 @@ import { ResumeCard } from './ResumeCard';
 import { ResumePreviewModal } from './ResumePreviewModal';
 import { Resume } from '@/types/resume';
 import { Search, Filter, AlertCircle, FileUp, Zap, Sparkles } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export function ResumeDashboard() {
   const { data: resumes, isLoading, isError, error } = useResumes();
@@ -93,15 +94,15 @@ export function ResumeDashboard() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center bg-card/50 rounded-xl border border-dashed">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <FileUp className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No resumes found</h3>
-              <p className="text-muted-foreground max-w-md">
-                {searchQuery ? 'Try adjusting your search terms.' : 'Upload your first resume to unlock AI matching and intelligent insights.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={FileUp}
+              title={searchQuery ? 'No matches' : 'Upload your first resume'}
+              description={
+                searchQuery
+                  ? 'Try different search terms or tags.'
+                  : 'AI will extract skills, score ATS fit, and power job matching automatically.'
+              }
+            />
           )}
         </div>
 

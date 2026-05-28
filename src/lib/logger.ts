@@ -1,7 +1,12 @@
 const isDev = process.env.NODE_ENV !== 'production';
 
+function shouldLogInfo(scope: string) {
+  return isDev || scope === 'Socket';
+}
+
 function write(level: 'debug' | 'info' | 'warn' | 'error', scope: string, message: string, meta?: unknown) {
   if (level === 'debug' && !isDev) return;
+  if (level === 'info' && !shouldLogInfo(scope)) return;
 
   const prefix = `[${scope}] ${message}`;
   if (level === 'error') {
@@ -10,7 +15,7 @@ function write(level: 'debug' | 'info' | 'warn' | 'error', scope: string, messag
     console.warn(prefix, meta !== undefined ? meta : '');
   } else if (level === 'debug') {
     console.debug(prefix, meta !== undefined ? meta : '');
-  } else if (isDev) {
+  } else {
     console.log(prefix, meta !== undefined ? meta : '');
   }
 }

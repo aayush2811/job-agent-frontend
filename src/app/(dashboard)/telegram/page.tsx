@@ -1,128 +1,196 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useTelegramApprovals } from '@/hooks/queries/useTelegram';
+import { useEffect, useState, useCallback } from 'react';
+import { useTelegramApprovals, useApproveJob, useRejectJob } from '@/hooks/queries/useTelegram';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Check, X, Smartphone, ArrowRight } from 'lucide-react';
+import { Check, X, Smartphone, Keyboard } from 'lucide-react';
+import { AIDecisionPanel } from '@/components/jobs/AIDecisionPanel';
+import { ApprovalCountdown } from '@/components/approval/ApprovalCountdown';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { JobRecord } from '@/types/job';
+import { EmptyState } from '@/components/ui/empty-state';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 export default function TelegramPage() {
-  const { data: approvals, isLoading, error } = useTelegramApprovals();
-  const [queue, setQueue] = useState<any[]>([]);
+  const { data: approvals, isLoading } = useTelegramApprovals();
+  const { mutate: approveJob } = useApproveJob();
+  const { mutate: rejectJob } = useRejectJob();
+  const [queue, setQueue] = useState<JobRecord[]>([]);
 
   useEffect(() => {
-    if (approvals) {
-      // Load initial approvals into local queue state so we can pop them off
-      setQueue(approvals);
-    }
+    if (approvals) setQueue(approvals as JobRecord[]);
   }, [approvals]);
 
-  const handleAction = (id: string, action: 'approve' | 'reject') => {
-    // In real app, call mutation here
-    setQueue((prev) => prev.filter((item) => item.id !== id));
+  const handleAction = useCallback(
+    (id: string, action: 'approve' | 'reject') => {
+      const item = queue.find((q) => (q.id || q._id) === id);
+      if (action === 'approve') {
+        approveJob(id, {
+          onSuccess: () => toast.success(`Approved ${item?.role || 'job'}`),
+        });
+      } else {
+        rejectJob(id, {
+          onSuccess: () => toast.info(`Rejected ${item?.role || 'job'}`),
+        });
+      }
+      setQueue((prev) => prev.filter((j) => (j.id || j._id) !== id));
+    },
+    [approveJob, rejectJob, queue]
+  );
+
+  const front = queue[0];
+  const frontId = front ? String(front.id || front._id) : null;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!frontId || e.target instanceof HTMLInputElement) return;
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        handleAction(frontId, 'approve');
+      }
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        handleAction(frontId, 'reject');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [frontId, handleAction]);
+
+  const bulkApprove = () => {
+    const ids = queue.map((j) => String(j.id || j._id));
+    ids.forEach((id) => approveJob(id));
+    toast.success(`Approved ${ids.length} jobs`);
+    setQueue([]);
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
-      <div className="text-center space-y-2 mb-8">
-        <div className="inline-flex items-center justify-center p-3 bg-blue-500/10 rounded-full mb-4">
+      <div className="text-center space-y-2 mb-4">
+        <div className="inline-flex items-center justify-center p-3 bg-blue-500/10 rounded-full mb-2">
           <Smartphone className="w-8 h-8 text-blue-500" />
         </div>
-        <h1 className="text-4xl font-bold tracking-tight text-gradient">Telegram Approval Center</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-gradient">Approval Center</h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
-          Review the AI agent's auto-apply requests in real-time. Approving a job will immediately trigger the Puppeteer auto-apply sequence.
+          Swipe-style queue with live AI match insights.{' '}
+          <span className="text-primary font-medium">A</span> approve ·{' '}
+          <span className="text-destructive font-medium">R</span> reject
         </p>
+        {queue.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            <Badge variant="outline" className="glow-sm">
+              {queue.length} in queue
+            </Badge>
+            <Button size="sm" variant="secondary" onClick={bulkApprove}>
+              Approve all
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="relative min-h-[400px] flex items-center justify-center">
+      <div className="hidden sm:flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Keyboard className="w-3.5 h-3.5" />
+        Shortcuts active on front card
+      </div>
+
+      <div className="relative min-h-[420px] flex items-center justify-center touch-pan-y">
         {isLoading ? (
-          <Card className="glass-card border-none shadow-xl w-full max-w-md absolute z-10">
+          <Card className="glass-card border-none shadow-xl w-full max-w-md">
             <CardHeader>
               <Skeleton className="h-8 w-3/4" />
             </CardHeader>
             <CardContent className="space-y-4">
               <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-              <Skeleton className="h-20 w-full mt-4" />
+              <Skeleton className="h-20 w-full" />
             </CardContent>
-            <CardFooter className="gap-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </CardFooter>
           </Card>
         ) : queue.length > 0 ? (
           <AnimatePresence mode="popLayout">
             {queue.map((item, index) => {
               const isFront = index === 0;
+              const id = String(item.id || item._id);
               return (
                 <motion.div
-                  key={item.id}
+                  key={id}
                   layout
-                  initial={{ scale: 0.8, opacity: 0, y: 50 }}
-                  animate={{ 
-                    scale: isFront ? 1 : 0.95 - (index * 0.05), 
-                    opacity: isFront ? 1 : 0.5 - (index * 0.2),
-                    y: index * 20,
-                    zIndex: queue.length - index
+                  drag={isFront ? 'x' : false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.7}
+                  onDragEnd={(_, info) => {
+                    if (!isFront) return;
+                    if (info.offset.x > 100) handleAction(id, 'approve');
+                    if (info.offset.x < -100) handleAction(id, 'reject');
                   }}
-                  exit={{ scale: 0.8, opacity: 0, x: item._lastAction === 'approve' ? 200 : -200, rotate: item._lastAction === 'approve' ? 15 : -15 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                  className="absolute w-full max-w-md"
+                  initial={{ scale: 0.9, opacity: 0, y: 40 }}
+                  animate={{
+                    scale: isFront ? 1 : Math.max(0.85, 0.95 - index * 0.04),
+                    opacity: isFront ? 1 : Math.max(0.2, 0.6 - index * 0.15),
+                    y: index * 16,
+                    zIndex: queue.length - index,
+                  }}
+                  exit={{
+                    opacity: 0,
+                    x: (item as JobRecord & { _lastAction?: string })._lastAction === 'approve' ? 200 : -200,
+                    rotate: (item as JobRecord & { _lastAction?: string })._lastAction === 'approve' ? 12 : -12,
+                  }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                  className="absolute w-full max-w-md cursor-grab active:cursor-grabbing"
                 >
-                  <Card className={`glass-card border-none shadow-2xl transition-all duration-300 ${isFront ? 'ring-1 ring-white/10' : ''}`}>
-                    <CardHeader className="pb-4">
-                      <div className="flex justify-between items-start">
+                  <Card
+                    className={`glass-card border-none shadow-2xl ${isFront ? 'glow-border' : ''}`}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <CardTitle className="text-2xl font-bold">{item.action}</CardTitle>
-                          <div className="text-sm text-blue-400 mt-1 flex items-center font-medium">
-                            Score: 95% Match <ArrowRight className="w-3 h-3 mx-1" /> Highly Recommended
-                          </div>
+                          <CardTitle className="text-2xl font-bold truncate">{item.role}</CardTitle>
+                          <p className="text-sm text-muted-foreground">{item.company}</p>
                         </div>
+                        {isFront && (
+                          <ApprovalCountdown createdAt={item.createdAt} />
+                        )}
                       </div>
+                      {isFront && (item.resumeMatchScore ?? 0) > 0 && (
+                        <motion.div
+                          className="mt-2 h-1 rounded-full bg-muted overflow-hidden"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                        >
+                          <motion.div
+                            className="h-full bg-gradient-to-r from-primary to-emerald-500"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${item.resumeMatchScore}%` }}
+                            transition={{ duration: 0.8 }}
+                          />
+                        </motion.div>
+                      )}
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="p-4 bg-black/20 rounded-lg space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Salary Range</span>
-                          <span className="font-medium text-green-400">$120k - $150k</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Location</span>
-                          <span className="font-medium">Remote (US)</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Requested</span>
-                          <span className="font-medium">{new Date(item.date).toLocaleTimeString()}</span>
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-muted-foreground">
-                        "Your resume matches 9/10 required skills. The AI agent has drafted a highly customized cover letter and is ready to submit."
-                      </p>
+                    <CardContent className="space-y-3">
+                      <AIDecisionPanel job={item} />
                     </CardContent>
-                    <CardFooter className="gap-3 pt-2">
-                      <Button 
+                    <CardFooter className="gap-3">
+                      <Button
                         size="lg"
-                        className="w-full border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white transition-colors" 
                         variant="outline"
+                        className="w-full border-red-500/50 text-red-500"
                         onClick={() => {
-                          item._lastAction = 'reject';
-                          handleAction(item.id, 'reject');
+                          (item as JobRecord & { _lastAction?: string })._lastAction = 'reject';
+                          handleAction(id, 'reject');
                         }}
                       >
-                        <X className="w-5 h-5 mr-2" /> Reject
+                        <X className="w-5 h-5 mr-2" /> Reject (R)
                       </Button>
-                      <Button 
+                      <Button
                         size="lg"
-                        className="w-full bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20" 
+                        className="w-full bg-emerald-600 hover:bg-emerald-500"
                         onClick={() => {
-                          item._lastAction = 'approve';
-                          handleAction(item.id, 'approve');
+                          (item as JobRecord & { _lastAction?: string })._lastAction = 'approve';
+                          handleAction(id, 'approve');
                         }}
                       >
-                        <Check className="w-5 h-5 mr-2" /> Approve
+                        <Check className="w-5 h-5 mr-2" /> Approve (A)
                       </Button>
                     </CardFooter>
                   </Card>
@@ -131,19 +199,11 @@ export default function TelegramPage() {
             })}
           </AnimatePresence>
         ) : (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center p-12 glass-card rounded-2xl border border-white/5 w-full max-w-md"
-          >
-            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-green-500" />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">You're all caught up!</h3>
-            <p className="text-muted-foreground">
-              The AI agent is currently searching for more roles. New approvals will appear here in real-time.
-            </p>
-          </motion.div>
+          <EmptyState
+            icon={Check}
+            title="Queue clear"
+            description="New approval requests will slide in here in real time when the AI finds high-match roles."
+          />
         )}
       </div>
     </div>

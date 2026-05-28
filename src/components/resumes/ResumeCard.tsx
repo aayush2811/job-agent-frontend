@@ -5,6 +5,8 @@ import { useDeleteResume, useSetDefaultResume } from '@/hooks/queries/useResumes
 import { MoreVertical, FileText, CheckCircle2, Star, Trash2, Eye, Activity, Gauge, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 
 interface ResumeCardProps {
   resume: Resume;
@@ -19,12 +21,18 @@ export function ResumeCard({ resume, onPreview }: ResumeCardProps) {
   const isProcessing = resume.status !== 'ready' && resume.status !== 'error';
 
   return (
-    <div className={cn(
-      "group relative bg-card rounded-xl border p-5 transition-all duration-300 hover:shadow-md",
-      resume.isDefault ? "border-primary/50 shadow-[0_0_15px_-3px_rgba(var(--primary),0.1)]" : "hover:border-muted-foreground/30",
+    <motion.div
+      layout
+      whileHover={{ y: -2 }}
+      className={cn(
+      "group relative glass-card rounded-xl border p-5 transition-all duration-300",
+      resume.isDefault ? "glow-border border-primary/40" : "hover:border-primary/20",
       isDeleting && "opacity-50 pointer-events-none",
       isProcessing && "animate-pulse"
     )}>
+      {resume.isDefault && (
+        <Badge className="absolute -top-2 right-3 text-[10px] bg-primary/90">Active default</Badge>
+      )}
       
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
@@ -170,6 +178,6 @@ export function ResumeCard({ resume, onPreview }: ResumeCardProps) {
         )}
       </div>
 
-    </div>
+    </motion.div>
   );
 }

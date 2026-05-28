@@ -1,98 +1,104 @@
 'use client';
 
 import { useJobStats } from '@/hooks/queries/useJobs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Activity, Briefcase, CheckCircle, Clock } from 'lucide-react';
+import { Briefcase, CheckCircle, Clock, Zap } from 'lucide-react';
 import { JobPipelineVisualization } from '@/components/dashboard/JobPipelineVisualization';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
-import { LiveLogViewer } from '@/components/dashboard/LiveLogViewer';
-import { SocketDebugPanel } from '@/components/socket/SocketDebugPanel';
+import { MetricCounter } from '@/components/dashboard/MetricCounter';
+import { AutomationPulse } from '@/components/dashboard/AutomationPulse';
+import { SystemHealthBanner } from '@/components/dashboard/SystemHealthBanner';
+import { useRealtimeStats } from '@/hooks/queries/useAnalytics';
+import { AutomationHeartbeat } from '@/components/command-center/AutomationHeartbeat';
+import { SocketMonitor } from '@/components/command-center/SocketMonitor';
+import { QueueProcessor } from '@/components/command-center/QueueProcessor';
+import { AutomationTimeline } from '@/components/timeline/AutomationTimeline';
+import { LiveTerminal } from '@/components/terminal/LiveTerminal';
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useJobStats();
+  const { data: realtime } = useRealtimeStats();
+
+  const queueSize =
+    (realtime as { queueSize?: number })?.queueSize ??
+    (realtime as { activeQueue?: number })?.activeQueue ??
+    stats?.pending ??
+    0;
 
   return (
     <div className="space-y-6 pb-12">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gradient">AI Command Center</h1>
-        <p className="text-muted-foreground mt-1">Real-time overview of your autonomous job agent.</p>
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/80 mb-1">Mission control</p>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gradient">
+            AI Command Center
+          </h1>
+          <p className="text-muted-foreground mt-1 max-w-xl">
+            Autonomous job-hunting OS — live pipeline, AI decisions, and realtime automation.
+          </p>
+        </div>
+        <AutomationPulse />
       </div>
 
-      {/* Top Status Cards */}
+      <AutomationHeartbeat />
+      <SystemHealthBanner />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="glass-card border-none shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-4 rounded-full" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-1/3" />
-                <Skeleton className="h-3 w-1/2 mt-2" />
-              </CardContent>
-            </Card>
+            <Skeleton key={i} className="h-28 rounded-xl" />
           ))
         ) : (
           <>
-            <Card className="glass-card border-none shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Extracted</CardTitle>
-                <Briefcase className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.total || 0}</div>
-                <p className="text-xs text-blue-500/80 mt-1">Scanning across 4 platforms</p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-none shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-                <Clock className="h-4 w-4 text-yellow-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.pending || 0}</div>
-                <p className="text-xs text-yellow-500/80 mt-1">Awaiting your review in Telegram</p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-none shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Auto Applied</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.approved || 0}</div>
-                <p className="text-xs text-green-500/80 mt-1">Successfully submitted by AI</p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-none shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">System Health</CardTitle>
-                <Activity className="h-4 w-4 text-purple-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-500">100%</div>
-                <p className="text-xs text-purple-500/80 mt-1">WhatsApp & DB Connected</p>
-              </CardContent>
-            </Card>
+            <MetricCounter
+              label="Jobs extracted"
+              value={stats?.total || 0}
+              hint="Live ingestion"
+              icon={Briefcase}
+              accent="text-blue-500"
+            />
+            <MetricCounter
+              label="Approval queue"
+              value={stats?.pending || 0}
+              hint={`${queueSize} processing`}
+              icon={Clock}
+              accent="text-amber-500"
+              glow
+            />
+            <MetricCounter
+              label="Auto applied"
+              value={stats?.approved || 0}
+              hint="AI submissions"
+              icon={CheckCircle}
+              accent="text-emerald-500"
+            />
+            <MetricCounter
+              label="Throughput"
+              value={(stats?.total || 0) + (stats?.approved || 0)}
+              hint="Total actions"
+              icon={Zap}
+              accent="text-primary"
+              glow
+            />
           </>
         )}
       </div>
-      
-      {/* Realtime Pipeline */}
-      <div className="w-full">
-        <JobPipelineVisualization />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <JobPipelineVisualization />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+          <QueueProcessor />
+          <SocketMonitor />
+        </div>
       </div>
 
-      {/* Split View: Activity Feed & Logs */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 lg:h-[400px]">
+      <AutomationTimeline />
+
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-2 min-h-[360px]">
         <LiveActivityFeed />
-        <LiveLogViewer />
-      </div>
-
-      <div className="pt-6">
-        <SocketDebugPanel />
+        <LiveTerminal />
       </div>
     </div>
   );

@@ -3,11 +3,13 @@ import { resumesService } from '@/services/resumes.service';
 import { Resume } from '@/types/resume';
 import { useEffect } from 'react';
 import { useSocket } from '@/hooks/useSocket';
+import { useAuthQueryEnabled } from '@/hooks/useAuthQueryEnabled';
 import { logger } from '@/lib/logger';
 
 export function useResumes() {
   const queryClient = useQueryClient();
   const { socket } = useSocket();
+  const enabled = useAuthQueryEnabled();
 
   useEffect(() => {
     if (!socket) return;
@@ -37,6 +39,7 @@ export function useResumes() {
         return [] as Resume[];
       }
     },
+    enabled,
     staleTime: 30000,
     retry: 1,
     placeholderData: [] as Resume[],
