@@ -5,7 +5,7 @@ import { getAccessToken, getRefreshToken } from '@/lib/auth-tokens';
 import { useAuthStore, selectAuthReady } from '@/store/useAuthStore';
 import { socketService } from '@/socket';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const AUTH_REQUEST_LOG =
   process.env.NEXT_PUBLIC_AUTH_DEBUG === 'true' || process.env.NODE_ENV === 'development';
 

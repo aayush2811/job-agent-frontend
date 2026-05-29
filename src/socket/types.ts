@@ -23,7 +23,7 @@ export const initialSocketDebugState: SocketDebugState = {
   lastHeartbeatAt: null,
   lastError: null,
   lastEvent: null,
-  url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
+  url: process.env.NEXT_PUBLIC_SOCKET_URL || '',
 };
 
 // Frontend event listeners map (Events we listen to)

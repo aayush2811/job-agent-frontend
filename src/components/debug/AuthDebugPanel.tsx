@@ -6,8 +6,8 @@ import { useSocket } from '@/hooks/useSocket';
 import { socketService } from '@/socket';
 import { getAccessToken } from '@/lib/auth-tokens';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || '';
 
 const SHOW =
   process.env.NEXT_PUBLIC_AUTH_DEBUG === 'true' ||

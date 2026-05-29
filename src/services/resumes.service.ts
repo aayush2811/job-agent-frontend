@@ -3,7 +3,7 @@ import { unwrapData } from '@/lib/api';
 import { mapApiResumeToResume, mapApiResumeList } from '@/lib/mapResume';
 import { Resume } from '@/types/resume';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, '') || '';
 
 function resolveFileUrl(fileUrl: string): string {
   if (!fileUrl) return '';

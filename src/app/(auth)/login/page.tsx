@@ -22,6 +22,8 @@ import {
 import { bootstrapAuthSession } from '@/lib/auth-session';
 import { useAuthReady } from '@/hooks/useAuthQueryEnabled';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getApiErrorMessage } from '@/lib/api';
+import { DemoLoginDebugPanel } from '@/components/debug/DemoLoginDebugPanel';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -49,8 +51,9 @@ export default function LoginPage() {
       toast.success('Successfully logged in (Demo Mode)');
       console.log('[Login] redirecting dashboard');
       router.push('/dashboard');
-    } catch {
-      toast.error('Failed to start Demo Mode. Is backend running?');
+    } catch (err) {
+      const actualError = getApiErrorMessage(err);
+      toast.error(`Failed to start Demo Mode: ${actualError}`);
     } finally {
       setIsLoading(false);
     }
@@ -70,8 +73,9 @@ export default function LoginPage() {
         toast.success('Successfully logged in (Demo Mode)');
         console.log('[Login] redirecting dashboard');
         router.push('/dashboard');
-      } catch {
-        toast.error('Failed to log in as Demo User. Is backend running?');
+      } catch (err) {
+        const actualError = getApiErrorMessage(err);
+        toast.error(`Failed to log in as Demo User: ${actualError}`);
       } finally {
         setIsLoading(false);
       }
@@ -95,75 +99,79 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-primary/20 blur-3xl rounded-full mix-blend-multiply opacity-70 animate-blob" />
       <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-indigo-500/20 blur-3xl rounded-full mix-blend-multiply opacity-70 animate-blob animation-delay-2000" />
       <div className="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-blue-500/20 blur-3xl rounded-full mix-blend-multiply opacity-70 animate-blob animation-delay-4000" />
 
-      <Card className="w-full max-w-md glass-card border-none shadow-2xl z-10">
-        <CardHeader className="space-y-1 items-center pb-8">
-          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-            <Briefcase className="w-6 h-6 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold tracking-tight text-gradient">AI Job Agent</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to access your automation dashboard
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="email">
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="bg-background/50 backdrop-blur-sm"
-              />
+      <div className="w-full max-w-md flex flex-col gap-4 z-10">
+        <Card className="w-full glass-card border-none shadow-2xl bg-card/85 backdrop-blur-md">
+          <CardHeader className="space-y-1 items-center pb-8">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <Briefcase className="w-6 h-6 text-primary" />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="password">
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="bg-background/50 backdrop-blur-sm"
-              />
-            </div>
-            <Button type="submit" className="w-full mt-6" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign in'}
+            <CardTitle className="text-2xl font-bold tracking-tight text-gradient">AI Job Agent</CardTitle>
+            <CardDescription className="text-center">
+              Sign in to access your automation dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="email">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className="bg-background/50 backdrop-blur-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="password">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="bg-background/50 backdrop-blur-sm"
+                />
+              </div>
+              <Button type="submit" className="w-full mt-6" disabled={isLoading}>
+                {isLoading ? 'Signing in...' : 'Sign in'}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex flex-col text-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-dashed border-primary/45 hover:border-primary text-primary hover:bg-primary/5 mt-1"
+              onClick={handleDemoLogin}
+              disabled={isLoading}
+            >
+              Continue with Demo Account
             </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-col text-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full border-dashed border-primary/45 hover:border-primary text-primary hover:bg-primary/5 mt-1"
-            onClick={handleDemoLogin}
-            disabled={isLoading}
-          >
-            Continue with Demo Account
-          </Button>
-          <p className="text-sm text-muted-foreground mt-2">
-            No account?{' '}
-            <Link href="/signup" className="text-primary hover:underline font-medium">
-              Create one
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+            <p className="text-sm text-muted-foreground mt-2">
+              No account?{' '}
+              <Link href="/signup" className="text-primary hover:underline font-medium">
+                Create one
+              </Link>
+            </p>
+          </CardFooter>
+        </Card>
+        
+        <DemoLoginDebugPanel />
+      </div>
     </div>
   );
 }
